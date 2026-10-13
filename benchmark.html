@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cursor model benchmark: reverse a string</title>
+<style>
+  :root {
+    --bg: #14120b;
+    --panel: #1d1a12;
+    --border: #3a3524;
+    --text: #e8e4d4;
+    --muted: #a39e88;
+    --accent: #f54e00;
+    --good: #6fbf73;
+    --warn: #e0b04a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px 32px 64px;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 1180px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; }
+  h2 { margin: 40px 0 6px; font-size: 18px; }
+  p.lead, p.note { color: var(--muted); margin: 4px 0 14px; max-width: 80ch; }
+  code {
+    font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: rgba(255,255,255,.07);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:last-child td { border-bottom: 0; }
+  thead th {
+    background: rgba(245,78,0,.12);
+    border-bottom: 1px solid var(--accent);
+    font-weight: 600;
+  }
+  tbody th {
+    width: 190px;
+    color: var(--muted);
+    font-weight: 600;
+    background: rgba(255,255,255,.02);
+  }
+  td + td, th + th, th + td { border-left: 1px solid var(--border); }
+  .pass { color: var(--good); font-weight: 600; }
+  .warn { color: var(--warn); }
+  td.pros { color: #cfe8d0; }
+  td.cons { color: #ecd9a8; }
+  .model { font-weight: 600; white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Benchmarking Cursor's models</h1>
+  <p class="lead">
+    One prompt, three models, two runs. Prompt: write a Unicode-safe
+    <code>reverseString</code> in TypeScript, with 5 tests, a 3-sentence explanation, one
+    unhandled edge case, raw test output and a fixed-format report.
+  </p>
+
+  <h2>Pros and cons</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Model</th><th>Pros</th><th>Cons</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="model">Gemini 4 Argon</td>
+          <td class="pros">Most thorough tests: it covered both ZWJ and skin-tone emoji in both runs. Its reported counts matched its files. It gave a clear explanation.</td>
+          <td class="cons">It had the longest code in run 2 (11 lines). In run 1 it added a stray note after the report and needed a fix for a wrong test filename. Its run 2 limitation mixes two edge cases.</td>
+        </tr>
+        <tr>
+          <td class="model">Grok 4.7</td>
+          <td class="pros">Compact code (14 lines in run 2). It followed the report format in both runs. Run 2's report matched its code.</td>
+          <td class="cons">In run 1 its report didn't match the code it wrote. That was partly because the runs shared a workspace, but it still reported without noticing. Run 2 has no skin-tone test.</td>
+        </tr>
+        <tr>
+          <td class="model">Composer</td>
+          <td class="pros">Shortest implementation (5 lines of code in run 2). It followed the prompt closely: exactly 3 sentences, then one edge case.</td>
+          <td class="cons">The weakest Unicode coverage: it never tested ZWJ or skin-tone emoji. Its run 1 limitation (no normalization) is debatable. Its run 2 limitation (unpaired surrogates) is a rare input. Run 1 output had stray <code>[REDACTED]</code> markers.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Results at a glance</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Model</th><th>Run 1 tests</th><th>Run 2 tests</th><th>Same method both runs</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="model">Gemini 4 Argon</td><td class="pass">5/5</td><td class="pass">5/5</td><td><code>Intl.Segmenter</code> (grapheme)</td></tr>
+        <tr><td class="model">Grok 4.7</td><td class="pass">5/5</td><td class="pass">5/5</td><td><code>Intl.Segmenter</code> (grapheme)</td></tr>
+        <tr><td class="model">Composer</td><td class="pass">5/5</td><td class="pass">5/5</td><td><code>Intl.Segmenter</code> (grapheme)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">
+    All three solved the task correctly. The real differences are test depth, how accurately each model
+    reported on its own work, and how well each stuck to the output format. Run 2 is one sample per model.
+  </p>
+
+  <h2>Run 1</h2>
+  <p class="note">All three models shared one workspace and overwrote each other's files.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th></th><th>Gemini 4 Argon</th><th>Grok 4.7</th><th>Composer</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Approach</th><td><code>Intl.Segmenter</code> (grapheme), module-level segmenter, <code>Array.from(...).reverse().join("")</code></td><td>Same approach. Its first draft built the segmenter inside the function and used a <code>for</code> loop.</td><td><code>Intl.Segmenter</code> (grapheme), module-level segmenter, spread + <code>.map(...)</code></td></tr>
+        <tr><th scope="row">Implementation file</th><td><code>gemini-4-argon/reverse.ts</code></td><td><code>grok-4.7/reverse.ts</code></td><td><code>composer/reverseString.ts</code></td></tr>
+        <tr><th scope="row">Code lines (as reported)</th><td>7 (32 with tests)</td><td>7</td><td>10</td></tr>
+        <tr><th scope="row">Code lines (actual file)</th><td>7</td><td class="warn">16</td><td>10</td></tr>
+        <tr><th scope="row">Tests passed (as reported)</th><td class="pass">5/5</td><td class="pass">5/5</td><td class="pass">5/5</td></tr>
+        <tr><th scope="row">Tests passed (re-run here)</th><td class="pass">5/5</td><td class="pass">5/5</td><td class="pass">5/5</td></tr>
+        <tr><th scope="row">Test runner</th><td><code>node --import tsx --test</code> (fixed a wrong filename in the <code>package.json</code> script)</td><td><code>node --experimental-strip-types --test</code></td><td><code>node --import tsx --test</code> (ran <code>npm install</code> with network access, retried once)</td></tr>
+        <tr><th scope="row">Unicode cases tested</th><td>Surrogate-pair emoji (👋🌍), decomposed é (<code>e</code> + U+0301), ZWJ family emoji, skin-tone emoji</td><td>Same cases as reported</td><td>Emoji (👋🌍), precomposed é, decomposed é</td></tr>
+        <tr><th scope="row">ZWJ / skin-tone coverage</th><td>Yes</td><td>Yes (as reported)</td><td class="warn">No</td></tr>
+        <tr><th scope="row">Stated limitation</th><td>Doesn't preserve paired BiDi control characters or cursive shaping in RTL/Indic text</td><td>Doesn't apply the Unicode Bidirectional Algorithm, so mixed LTR/RTL text isn't visually reversed</td><td>No Unicode normalization, so NFC and NFD forms of the same text reverse to different strings</td></tr>
+        <tr><th scope="row">Followed the report format</th><td>Yes, but appended a stray "Reviewing Code" note after it</td><td>Yes</td><td>Yes, with trailing <code>[REDACTED]</code> markers</td></tr>
+        <tr><th scope="row">Extra files / setup</th><td>None</td><td>None</td><td>Wrote a <code>tsconfig.json</code> (per its transcript, not kept on disk)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Run 2</h2>
+  <p class="note">Each model ran in its own directory under <code>run-2/</code>. The prompt was otherwise identical to run 1.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th></th><th>Gemini 4 Argon</th><th>Grok 4.7</th><th>Composer</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Approach</th><td><code>Intl.Segmenter</code> (grapheme), module-level segmenter, <code>Array.from(..., mapFn)</code></td><td><code>Intl.Segmenter</code> (grapheme), segmenter built inside the function, <code>for</code> loop</td><td><code>Intl.Segmenter</code> (grapheme), segmenter built inside the function, spread + <code>.map(...)</code></td></tr>
+        <tr><th scope="row">Implementation file</th><td><code>run-2/gemini-4-argon/reverseString.ts</code></td><td><code>run-2/grok-4.7/reverse.ts</code></td><td><code>run-2/composer/reverse.ts</code></td></tr>
+        <tr><th scope="row">Code lines (as reported)</th><td>11 (30 for tests)</td><td>14</td><td>5</td></tr>
+        <tr><th scope="row">Code lines (actual file)</th><td>11 (29 for tests)</td><td>14</td><td>9 (5 of code, 4 of doc comment)</td></tr>
+        <tr><th scope="row">Tests passed (as reported)</th><td class="pass">5/5</td><td class="pass">5/5</td><td class="pass">5/5</td></tr>
+        <tr><th scope="row">Tests passed (re-run here)</th><td class="pass">5/5</td><td class="pass">5/5</td><td class="pass">5/5</td></tr>
+        <tr><th scope="row">Unicode cases tested</th><td>Surrogate-pair emoji (🚀🎉), decomposed é, skin-tone emoji, ZWJ family emoji</td><td>Emoji (😀), decomposed é, ZWJ emoji</td><td>Emoji (👋🌍), precomposed é, decomposed é</td></tr>
+        <tr><th scope="row">ZWJ / skin-tone coverage</th><td>Yes</td><td>ZWJ only</td><td class="warn">No</td></tr>
+        <tr><th scope="row">Stated limitation</th><td>Doesn't mirror paired brackets or invert stateful BiDi control sequences</td><td>Doesn't apply the Unicode Bidirectional Algorithm, so Arabic/Hebrew isn't reordered for display</td><td>Unpaired UTF-16 surrogates are ill-formed and may segment unpredictably</td></tr>
+        <tr><th scope="row">Report format</th><td>Followed</td><td>Followed</td><td>Followed, wrapped in a code block</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+</body>
+</html>

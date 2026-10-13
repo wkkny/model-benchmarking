@@ -1,0 +1,16 @@
+{
+  "name": "model-benchmarking",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test \"*/*.test.ts\"",
+    "test:run2": "node --import tsx --test \"run-2/*/*.test.ts\"",
+    "test:gemini": "node --import tsx --test gemini-4-argon/*.test.ts",
+    "test:grok": "node --import tsx --test grok-4.7/*.test.ts",
+    "test:composer": "node --import tsx --test composer/*.test.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
